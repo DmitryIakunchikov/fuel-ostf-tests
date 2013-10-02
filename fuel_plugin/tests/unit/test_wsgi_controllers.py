@@ -49,7 +49,7 @@ class BaseTestController(unittest2.TestCase):
         self.trans = connection.begin()
 
         self.Session.configure(bind=connection)
-        self.session = self.Session(bind=connection)
+        self.session = self.Session()
 
         #test case level patching
 
@@ -217,26 +217,30 @@ class TestTestRunsController(BaseTestController):
 
         discovery(deployment_info=depl_info, path=TEST_PATH)
 
-        #patch request from nailgun
-        testruns = [
+        self.testruns = [
             {
                 'testset': 'ha_deployment_test',
                 'metadata': {'cluster_id': 1}
             }
         ]
 
-        request_body_mock = json.dumps(testruns)
-        self.req_body_patcher = patch(
-            'fuel_plugin.ostf_adapter.wsgi.controllers.request.body',
-            request_body_mock
-        )
-        self.req_body_patcher.start()
-
         self.controller = controllers.TestrunsController()
 
     def tearDown(self):
-        self.req_body_patcher.stop()
         super(TestTestRunsController, self).tearDown()
+
+
+class TestTestRunsPostController(TestTestRunsController):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestTestRunsController, cls).setUpClass()
+
+    def setUp(self):
+        super(TestTestRunsPostController, self).setUp()
+
+    def tearDown(self):
+        super(TestTestRunsPostController, self).tearDown()
 
     def test_post(self):
         expected = {
@@ -251,7 +255,11 @@ class TestTestRunsController(BaseTestController):
             }
         }
 
-        res = self.controller.post()[0]
+        with patch(
+            'fuel_plugin.ostf_adapter.wsgi.controllers.request.body',
+            json.dumps(self.testruns)
+        ):
+            res = self.controller.post()[0]
 
         #checking wheter controller is working properly
         #by testing its blackbox behaviour
@@ -297,27 +305,25 @@ class TestTestRunsPutController(TestTestRunsController):
 
     def setUp(self):
         super(TestTestRunsPutController, self).setUp()
-        self.stored_test_run = self.controller.post()[0]
 
-        #override req_body_patcher here
-        testruns = [
-            {
-                'id': int(self.stored_test_run['id']),
-                'metadata': {
-                    'cluster_id': int(self.stored_test_run['cluster_id'])
-                },
-                'status': 'stopped'
-            }
-        ]
-        request_body_mock = json.dumps(testruns)
-        self.req_body_patcher = patch(
-            'fuel_plugin.ostf_adapter.wsgi.controllers.request.body',
-            request_body_mock
+        self.nose_adapter_session_patcher = patch(
+            'fuel_plugin.ostf_adapter.nose_plugin.nose_adapter.engine.get_session',
+            lambda *args: self.Session()
         )
-        self.req_body_patcher.start()
+        self.nose_adapter_session_patcher.start()
+
+        #this test_case needs data on particular test_run
+        #already present in database. That is suppotred by
+        #following code
+
+        with patch(
+            'fuel_plugin.ostf_adapter.wsgi.controllers.request.body',
+            json.dumps(self.testruns)
+        ):
+            self.stored_test_run = self.controller.post()[0]
 
     def tearDown(self):
-        self.req_body_patcher.start()
+        self.nose_adapter_session_patcher.stop()
         super(TestTestRunsPutController, self).tearDown()
 
     def test_put_stopped(self):
@@ -334,7 +340,19 @@ class TestTestRunsPutController(TestTestRunsController):
             }
         }
 
-        res = self.controller.put()[0]
+        testruns_to_stop = [
+            {
+                'id': int(self.stored_test_run['id']),
+                'metadata': {'cluster_id': int(self.stored_test_run['cluster_id'])},
+                'status': 'stopped'
+            }
+        ]
+
+        with patch(
+            'fuel_plugin.ostf_adapter.wsgi.controllers.request.body',
+            json.dumps(testruns_to_stop)
+        ):
+            res = self.controller.put()[0]
 
         #checking wheter controller is working properly
         #by testing its blackbox behaviour
@@ -361,7 +379,3 @@ class TestTestRunsPutController(TestTestRunsController):
                 [test.status == 'stopped' for test in testrun_tests]
             )
         )
-
-    #TODO: impement this test
-    def test_put_restarted(self, models, request):
-        pass

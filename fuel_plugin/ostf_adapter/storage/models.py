@@ -144,6 +144,7 @@ class TestRun(BASE):
             updated_data['status'] = status
         if status in ['finished']:
             updated_data['ended_at'] = datetime.utcnow()
+
         session.query(cls). \
             filter(cls.id == test_run_id). \
             update(updated_data, synchronize_session=False)
