@@ -14,6 +14,7 @@
 
 import logging
 import os
+import pecan
 
 from nose import plugins
 
@@ -22,7 +23,9 @@ from fuel_plugin.ostf_adapter.nose_plugin import nose_utils
 from fuel_plugin.ostf_adapter.storage import engine, models
 
 
-CORE_PATH = 'fuel_health'
+CORE_TESTS = 'fuel_health'
+#path to debug tests if it given
+CORE_PATH = CORE_TESTS or getattr(pecan.conf, 'debug_tests', None)
 
 LOG = logging.getLogger(__name__)
 
@@ -69,7 +72,6 @@ class DiscoveryPlugin(plugins.Plugin):
             if test_set_id in test_id:
                 session = engine.get_session()
                 with session.begin(subtransactions=True):
-                    LOG.info('%s added for %s', test_id, test_set_id)
 
                     data = dict()
                     data['cluster_id'] = self.deployment_info['cluster_id']
@@ -79,6 +81,8 @@ class DiscoveryPlugin(plugins.Plugin):
 
                     if set(data['deployment_tags'])\
                        .issubset(self.deployment_info['deployment_tags']):
+
+                        LOG.info('%s added for %s', test_id, test_set_id)
 
                         data.update(
                             {
@@ -96,6 +100,7 @@ def discovery(deployment_info={}, path=CORE_PATH):
     """Will discover all tests on provided path and save info in db
     """
     LOG.info('Starting discovery for %r.', path)
+
     nose_test_runner.SilentTestProgram(
         addplugins=[DiscoveryPlugin(deployment_info)],
         exit=False,

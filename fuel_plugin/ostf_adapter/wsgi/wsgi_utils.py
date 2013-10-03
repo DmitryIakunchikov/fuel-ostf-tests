@@ -34,18 +34,18 @@ def discovery_check(cluster):
         ]
     )
 
-    session = engine.get_session()
-    with session.begin(subtransactions=True):
-        test_set = session.query(models.TestSet)\
-            .filter_by(cluster_id=cluster)\
-            .first()
+    #session = engine.get_session()
+    #with session.begin(subtransactions=True):
+        #test_set = session.query(models.TestSet)\
+        #    .filter_by(cluster_id=cluster)\
+        #    .first()
 
-        if not test_set:
-            cluster_data = {
-                'cluster_id': cluster,
-                'deployment_tags': cluster_deployment_args
-            }
-            nose_discovery.discovery(deployment_info=cluster_data)
+        #if not test_set:
+    cluster_data = {
+        'cluster_id': cluster,
+        'deployment_tags': cluster_deployment_args
+    }
+    nose_discovery.discovery(deployment_info=cluster_data)
 
 
 def _request_to_nailgun(api_url):

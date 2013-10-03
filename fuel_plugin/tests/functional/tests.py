@@ -13,7 +13,9 @@
 #    under the License.
 
 import time
+import mock
 
+import pecan
 
 from fuel_plugin.tests.functional.base import BaseAdapterTest, Response
 from fuel_plugin.ostf_client.client import TestingAdapterClient as adapter
@@ -34,13 +36,26 @@ class AdapterTests(BaseAdapterTest):
             'fuel_plugin.tests.functional.dummy_tests.general_test.Dummy_test.test_fail_with_step': 'fail_step',
             'fuel_plugin.tests.functional.dummy_tests.stopped_test.dummy_tests_stopped.test_really_long': 'really_long',
             'fuel_plugin.tests.functional.dummy_tests.stopped_test.dummy_tests_stopped.test_not_long_at_all': 'not_long',
-            'fuel_plugin.tests.functional.dummy_tests.stopped_test.dummy_tests_stopped.test_one_no_so_long': 'so_long'
+            'fuel_plugin.tests.functional.dummy_tests.stopped_test.dummy_tests_stopped.test_one_no_so_long': 'so_long',
+            'fuel_plugin.tests.functional.dummy_tests.deployment_types_tests.ha_deployment_test.HATest.test_ha_depl': 'ha_depl',
+            'fuel_plugin.tests.functional.dummy_tests.deployment_types_tests.ha_deployment_test.HATest.test_ha_rhel_depl': 'ha_rhel_depl'
         }
         cls.testsets = {
             # "fuel_smoke": None,
             # "fuel_sanity": None,
-            "general_test": ['fast_pass', 'fast_error', 'fast_fail', 'long_pass'],
-            "stopped_test": ['really_long', 'not_long', 'so_long']
+            "ha_deployment_test": [],
+            "general_test": [
+                'fast_pass',
+                'fast_error',
+                'fast_fail',
+                'long_pass',
+                'fail_step'
+            ],
+            "stopped_test": [
+                'really_long',
+                'not_long',
+                'so_long'
+            ]
         }
 
         cls.adapter = adapter(url)
@@ -49,20 +64,28 @@ class AdapterTests(BaseAdapterTest):
     def test_list_testsets(self):
         """Verify that self.testsets are in json response
         """
-        json = self.adapter.testsets().json()
+        cluster_id = 1
+
+        json = self.adapter.testsets(cluster_id).json()
         response_testsets = [item['id'] for item in json]
         for testset in self.testsets:
-            msg = '"{test}" not in "{response}"'.format(test=testset, response=response_testsets)
+            msg = '"{test}" not in "{response}"'.format(
+                test=testset,
+                response=response_testsets
+            )
             self.assertTrue(testset in response_testsets, msg)
 
     def test_list_tests(self):
         """Verify that self.tests are in json response
         """
-        json = self.adapter.tests().json()
+        cluster_id = 1
+        json = self.adapter.tests(cluster_id).json()
         response_tests = [item['id'] for item in json]
-
-        for test in self.mapping:
-            msg = '"{test}" not in "{response}"'.format(test=test.capitalize(), response=response_tests)
+        for test in self.mapping.keys():
+            msg = '"{test}" not in "{response}"'.format(
+                test=test.capitalize(),
+                response=response_tests
+            )
             self.assertTrue(test in response_tests, msg)
 
     def test_run_testset(self):
@@ -75,20 +98,47 @@ class AdapterTests(BaseAdapterTest):
         time.sleep(3)
 
         r = self.client.testruns_last(cluster_id)
+        print r.general_test['status']
+        print r.stopped_test['status']
 
-        assertions = Response([{'status': 'running',
-                                'testset': 'general_test',
-                                'tests': [
-                                    {'id': 'fast_pass', 'status': 'success', 'name': 'fast pass test',
-                                     'description': """        This is a simple always pass test
+        assertions = Response(
+            [
+                {
+                    'status': 'running',
+                    'testset': 'general_test',
+                    'tests': [
+                        {
+                            'id': 'fast_pass',
+                            'status': 'success',
+                            'name': 'fast pass test',
+                            'description': """        This is a simple always pass test
         """,},
-                                    {'id': 'long_pass', 'status': 'running'},
-                                    {'id': 'fail_step', 'message': 'Fake fail message', 'status': 'failure'},
-                                    {'id': 'fast_error', 'message': '', 'status': 'error'},
-                                    {'id': 'fast_fail', 'message': 'Something goes wroooong', 'status': 'failure'}]}])
+                        {
+                            'id': 'long_pass',
+                            'status': 'running'
+                        },
+                        {
+                            'id': 'fail_step',
+                            'message': 'Fake fail message',
+                            'status': 'failure'
+                         },
+                        {
+                            'id': 'fast_error',
+                            'message': '',
+                            'status': 'error'
+                        },
+                        {
+                            'id': 'fast_fail',
+                            'message': 'Something goes wroooong',
+                            'status': 'failure'
+                        }
+                    ]
+                }
+            ]
+        )
 
-        print r
-        print assertions
+        #print r
+        #print assertions
 
         self.compare(r, assertions)
         time.sleep(10)
@@ -104,10 +154,10 @@ class AdapterTests(BaseAdapterTest):
         """Verify that long running testrun can be stopped
         """
         testset = "stopped_test"
-        cluster_id = 2
+        cluster_id = 1
 
         self.client.start_testrun(testset, cluster_id)
-        time.sleep(10)
+        time.sleep(20)
         r = self.client.testruns_last(cluster_id)
         assertions = Response([
             {'status': 'running',

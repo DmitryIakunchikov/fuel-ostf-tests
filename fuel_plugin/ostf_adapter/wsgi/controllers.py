@@ -46,8 +46,11 @@ class TestsController(BaseRestController):
     def get(self, cluster):
         discovery_check(cluster)
         with request.session.begin(subtransactions=True):
-            return [item.frontend for item
-                    in request.session.query(models.Test).all()]
+            tests = request.session.query(models.Test)\
+                .filter_by(cluster_id=cluster)\
+                .filter_by(test_run_id=None)\
+                .all()
+            return [item.frontend for item in tests]
 
 
 class TestsetsController(BaseRestController):
@@ -56,12 +59,13 @@ class TestsetsController(BaseRestController):
     def get(self, cluster):
         discovery_check(cluster)
         with request.session.begin(subtransactions=True):
-            test_set = request.session.query(models.TestSet)\
+            test_sets = request.session.query(models.TestSet)\
                 .filter_by(cluster_id=cluster)\
-                .first()
+                .all()
 
-            if test_set and isinstance(test_set, models.TestSet):
-                return test_set.frontend
+            return [item.frontend for item in test_sets]
+            #if test_set and isinstance(test_set, models.TestSet):
+            #    return test_set.frontend
             return {}
 
 
