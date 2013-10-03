@@ -19,6 +19,9 @@ from fuel_plugin.ostf_adapter.storage import engine, models
 from fuel_plugin.ostf_adapter.nose_plugin import nose_discovery
 
 
+CORE_PATH = conf.debug_tests if conf.get('debug_tests') else 'fuel_health'
+
+
 def discovery_check(cluster):
     nailgun_api_url = 'api/clusters/{}'.format(cluster)
     cluster_meta = _request_to_nailgun(nailgun_api_url)
@@ -34,18 +37,29 @@ def discovery_check(cluster):
         ]
     )
 
-    #session = engine.get_session()
-    #with session.begin(subtransactions=True):
-        #test_set = session.query(models.TestSet)\
-        #    .filter_by(cluster_id=cluster)\
-        #    .first()
-
-        #if not test_set:
     cluster_data = {
         'cluster_id': cluster,
         'deployment_tags': cluster_deployment_args
     }
-    nose_discovery.discovery(deployment_info=cluster_data)
+
+    session = engine.get_session()
+    with session.begin(subtransactions=True):
+        test_sets = session.query(models.TestSet)\
+            .filter_by(cluster_id=cluster)\
+            .all()
+
+        if not test_sets:
+            nose_discovery.discovery(
+                path=CORE_PATH,
+                deployment_info=cluster_data
+            )
+            return
+
+        for testset in test_sets:
+            if not set(testset.deployment_tags).issubset(
+                cluster_data['deployment_tags']
+            ):
+                pass
 
 
 def _request_to_nailgun(api_url):

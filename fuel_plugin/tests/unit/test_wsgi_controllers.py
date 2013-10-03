@@ -113,7 +113,7 @@ class TestTestsController(BaseTestController):
                     'duration': None,
                     'message': None,
                     'id': u'fuel_plugin.tests.functional.dummy_tests.deployment_types_tests.ha_deployment_test.HATest.test_ha_depl',
-                    'description': u'        This is empty test for any\n        ha deployment\n        Deployment tags:\n        '
+                    'description': u'        This is empty test for any\n        ha deployment\n        Deployment tags:\n        ',
                 },
                 {
                     'status': None,
@@ -167,10 +167,12 @@ class TestTestSetsController(BaseTestController):
     def test_get(self):
         expected = {
             'cluster_id': 1,
-            'frontend': {
-                'id': 'ha_deployment_test',
-                'name': 'Fake tests for HA deployment'
-            }
+            'frontend': [
+                {
+                    'id': 'ha_deployment_test',
+                    'name': 'Fake tests for HA deployment'
+                }
+            ]
         }
 
         #patch CORE_PATH from nose_discovery in order

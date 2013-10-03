@@ -23,10 +23,6 @@ from fuel_plugin.ostf_adapter.nose_plugin import nose_utils
 from fuel_plugin.ostf_adapter.storage import engine, models
 
 
-CORE_TESTS = 'fuel_health'
-#path to debug tests if it given
-CORE_PATH = CORE_TESTS or getattr(pecan.conf, 'debug_tests', None)
-
 LOG = logging.getLogger(__name__)
 
 
@@ -96,7 +92,7 @@ class DiscoveryPlugin(plugins.Plugin):
                         session.add(test_obj)
 
 
-def discovery(deployment_info={}, path=CORE_PATH):
+def discovery(path, deployment_info={}):
     """Will discover all tests on provided path and save info in db
     """
     LOG.info('Starting discovery for %r.', path)

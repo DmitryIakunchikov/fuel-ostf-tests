@@ -50,7 +50,11 @@ class TestsController(BaseRestController):
                 .filter_by(cluster_id=cluster)\
                 .filter_by(test_run_id=None)\
                 .all()
-            return [item.frontend for item in tests]
+
+            if tests:
+                return [item.frontend for item in tests]
+
+            return {}
 
 
 class TestsetsController(BaseRestController):
@@ -63,9 +67,8 @@ class TestsetsController(BaseRestController):
                 .filter_by(cluster_id=cluster)\
                 .all()
 
-            return [item.frontend for item in test_sets]
-            #if test_set and isinstance(test_set, models.TestSet):
-            #    return test_set.frontend
+            if test_sets:
+                return [item.frontend for item in test_sets]
             return {}
 
 
@@ -78,8 +81,9 @@ class TestrunsController(BaseRestController):
     @expose('json')
     def get_all(self):
         with request.session.begin(subtransactions=True):
-            return [item.frontend for item
-                    in request.session.query(models.TestRun).all()]
+            test_runs = request.session.query(models.TestRun).all()
+
+            return [item.frontend for item in test_runs]
 
     @expose('json')
     def get_one(self, test_run_id):
@@ -94,11 +98,13 @@ class TestrunsController(BaseRestController):
     def get_last(self, cluster_id):
         with request.session.begin(subtransactions=True):
             test_run_ids = request.session.query(func.max(models.TestRun.id)) \
-                .group_by(models.TestRun.test_set_id).\
-                filter_by(cluster_id=cluster_id)
-            test_runs = request.session.query(models.TestRun). \
-                options(joinedload('tests')). \
-                filter(models.TestRun.id.in_(test_run_ids))
+                .group_by(models.TestRun.test_set_id)\
+                .filter_by(cluster_id=cluster_id)
+
+            test_runs = request.session.query(models.TestRun)\
+                .options(joinedload('tests'))\
+                .filter(models.TestRun.id.in_(test_run_ids))
+
             return [item.frontend for item in test_runs]
 
     @expose('json')
@@ -112,9 +118,18 @@ class TestrunsController(BaseRestController):
                 tests = test_run.get('tests', [])
 
                 test_set = models.TestSet.get_test_set(
-                    request.session, test_set, metadata)
+                    request.session,
+                    test_set,
+                    metadata
+                )
+
                 test_run = models.TestRun.start(
-                    request.session, test_set, metadata, tests)
+                    request.session,
+                    test_set,
+                    metadata,
+                    tests
+                )
+
                 res.append(test_run)
         return res
 

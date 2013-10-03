@@ -21,7 +21,7 @@ from fuel_plugin.ostf_adapter.storage import models
 from fuel_plugin.ostf_adapter.storage import engine
 
 
-class TestNoseDiscovery(unittest2.TestCase):
+class BaseTestNoseDiscovery(unittest2.TestCase):
     '''
     All test writing to database is wrapped in
     non-ORM transaction which is created in
@@ -84,6 +84,19 @@ class TestNoseDiscovery(unittest2.TestCase):
         #unwrapping
         self.trans.rollback()
         self.session.close()
+
+
+class TestNoseDiscovery(BaseTestNoseDiscovery):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestNoseDiscovery, cls).setUpClass()
+
+    def setUp(self):
+        super(TestNoseDiscovery, self).setUp()
+
+    def tearDown(self):
+        super(TestNoseDiscovery, self).tearDown()
 
     def test_discovery_testsets(self):
         expected = {
@@ -169,3 +182,26 @@ class TestNoseDiscovery(unittest2.TestCase):
                 ]
             )
         )
+
+
+class TestNoseDiscoveryRedeployedCluster(BaseTestNoseDiscovery):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestNoseDiscovery, cls).setUpClass()
+
+    def setUp(self):
+        super(TestNoseDiscovery, self).setUp()
+
+        #make fixture writing to db by calling
+        #discovery for cluster
+        nose_discovery.discovery(
+            path='fuel_plugin.tests.functional.dummy_tests.deployment_types_tests.ha_deployment_test',
+            deployment_info=self.fixtures['ha_deployment_test']
+        )
+
+    def tearDown(self):
+        super(TestNoseDiscovery, self).tearDown()
+
+    def test_rediscover_testset(self):
+        pass
