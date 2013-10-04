@@ -58,7 +58,7 @@ class AdapterTests(BaseAdapterTest):
         }
 
         cls.adapter = adapter(url)
-        cls.client = cls.init_client(url, cls.mapping)
+        cls.client = cls.init_client(url)
 
     def test_list_testsets(self):
         """Verify that self.testsets are in json response
@@ -101,54 +101,116 @@ class AdapterTests(BaseAdapterTest):
         time.sleep(5)
 
         r = self.client.testruns_last(cluster_id)
-        print r.test_sets
 
         assertions = Response(
             [
                 {
-                    'status': 'running',
                     'testset': 'general_test',
+                    'status': 'running',
                     'tests': [
                         {
-                            'id': 'fast_pass',
-                            'status': 'success',
-                            'name': 'fast pass test',
-                            'description': """        This is a simple always pass test
-        """,},
-                        {
-                            'id': 'long_pass',
-                            'status': 'running'
-                        },
-                        {
-                            'id': 'fail_step',
+                            'status': 'failure',
+                            'testset': 'general_test',
+                            'name': 'Fast fail with step',
                             'message': 'Fake fail message',
-                            'status': 'failure'
-                         },
-                        {
-                            'id': 'fast_error',
-                            'message': '',
-                            'status': 'error'
+                            'id': 'fuel_plugin.tests.functional.dummy_tests.general_test.Dummy_test.test_fail_with_step',
+                            'description': '        '
                         },
                         {
-                            'id': 'fast_fail',
+                            'status': 'error',
+                            'testset': 'general_test',
+                            'name': 'And fast error',
+                            'message': '',
+                            'id': 'fuel_plugin.tests.functional.dummy_tests.general_test.Dummy_test.test_fast_error',
+                            'description': '        '
+                        },
+                        {
+                            'status': 'failure',
+                            'testset': 'general_test',
+                            'name': 'Fast fail',
                             'message': 'Something goes wroooong',
-                            'status': 'failure'
+                            'id': u'fuel_plugin.tests.functional.dummy_tests.general_test.Dummy_test.test_fast_fail',
+                            'description': '        '
+                        },
+                        {
+                            'status': 'success',
+                            'testset': 'general_test',
+                            'name': 'fast pass test',
+                            'duration': '1sec',
+                            'message': '',
+                            'id': 'fuel_plugin.tests.functional.dummy_tests.general_test.Dummy_test.test_fast_pass',
+                            'description': '        This is a simple always pass test\n        '
+                        },
+                        {
+                            'status': 'running',
+                            'testset': 'general_test',
+                            'name': 'Will sleep 5 sec',
+                            'duration': '5sec',
+                            'message': '',
+                            'id': 'fuel_plugin.tests.functional.dummy_tests.general_test.Dummy_test.test_long_pass',
+                            'description': '        This is a simple test\n        it will run for 5 sec\n        '
                         }
-                    ]
+                    ],
+                    'meta': None,
+                    'cluster_id': 1,
+                },
+                {
+                    'testset': 'stopped_test',
+                    'status': 'running',
+                    'tests': [
+                        {
+                            'status': 'success',
+                            'testset': 'stopped_test',
+                            'name': 'You know.. for testing',
+                            'duration': '1sec',
+                            'message': '',
+                            'id': 'fuel_plugin.tests.functional.dummy_tests.stopped_test.dummy_tests_stopped.test_not_long_at_all',
+                            'description': '            '
+                        },
+                        {
+                            'status': 'running',
+                            'testset': 'stopped_test',
+                            'name': 'What i am doing here? You ask me????',
+                            'duration': None,
+                            'message': '',
+                            'id': 'fuel_plugin.tests.functional.dummy_tests.stopped_test.dummy_tests_stopped.test_one_no_so_long',
+                            'description': '        '
+                        },
+                        {
+                            'status': 'wait_running',
+                            'testset': 'stopped_test',
+                            'name': 'This is long running tests',
+                            'duration': '25sec',
+                            'message': None,
+                            'id': 'fuel_plugin.tests.functional.dummy_tests.stopped_test.dummy_tests_stopped.test_really_long',
+                            'description': '           '
+                        }
+                    ],
+                    'meta': None,
+                    'cluster_id': 1,
                 }
             ]
         )
 
-        #print r
-        #print assertions
-
         self.compare(r, assertions)
-        time.sleep(10)
+        time.sleep(30)
 
         r = self.client.testruns_last(cluster_id)
 
         assertions.general_test['status'] = 'finished'
-        assertions.long_pass['status'] = 'success'
+        assertions.stopped_test['status'] = 'finished'
+
+        for test in assertions.general_test['tests']:
+            if test['name']  == 'Will sleep 5 sec':
+                test['status'] = 'success'
+
+        for test in assertions.stopped_test['tests']:
+            if test['name']  == 'This is long running tests':
+                test['status'] = 'success'
+                test['message'] = ''
+
+            if test['name'] == 'What i am doing here? You ask me????':
+                test['status'] = 'success'
 
         self.compare(r, assertions)
 
