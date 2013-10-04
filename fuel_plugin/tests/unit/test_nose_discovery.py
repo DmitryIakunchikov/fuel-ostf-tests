@@ -184,14 +184,15 @@ class TestNoseDiscovery(BaseTestNoseDiscovery):
         )
 
 
+@unittest2.skip("Not needed here")
 class TestNoseDiscoveryRedeployedCluster(BaseTestNoseDiscovery):
 
     @classmethod
     def setUpClass(cls):
-        super(TestNoseDiscovery, cls).setUpClass()
+        super(TestNoseDiscoveryRedeployedCluster, cls).setUpClass()
 
     def setUp(self):
-        super(TestNoseDiscovery, self).setUp()
+        super(TestNoseDiscoveryRedeployedCluster, self).setUp()
 
         #make fixture writing to db by calling
         #discovery for cluster
@@ -201,7 +202,7 @@ class TestNoseDiscoveryRedeployedCluster(BaseTestNoseDiscovery):
         )
 
     def tearDown(self):
-        super(TestNoseDiscovery, self).tearDown()
+        super(TestNoseDiscoveryRedeployedCluster, self).tearDown()
 
     def test_rediscover_testset(self):
         pass

@@ -66,6 +66,5 @@ class HATest(unittest.TestCase):
         """fake empty test
         This is empty test for any
         ha deployment
-        Deployment tags:
         """
         self.assertTrue(True)

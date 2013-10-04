@@ -46,14 +46,20 @@ class TestRun(BASE):
     test_set_id = sa.Column(sa.String(128))
 
     test_set = relationship('TestSet', backref='test_runs')
-    tests = relationship('Test', backref='test_run', order_by='Test.name')
+    tests = relationship(
+        'Test',
+        backref='test_run',
+        order_by='Test.name',
+        cascade='delete'
+    )
 
     #following code defines proper foreign key
     #contstraint for composite primary key
     __table_args__ = (
         sa.ForeignKeyConstraint(
             ['test_set_id', 'cluster_id'],
-            ['test_sets.id', 'test_sets.cluster_id']
+            ['test_sets.id', 'test_sets.cluster_id'],
+            ondelete='CASCADE'
         ),
         {}
     )
@@ -227,8 +233,12 @@ class TestSet(BASE):
     meta = sa.Column(fields.JsonField())
     deployment_tags = sa.Column(ARRAY(sa.String(64)))
 
-    tests = relationship('Test',
-                         backref='test_set', order_by='Test.name')
+    tests = relationship(
+        'Test',
+        backref='test_set',
+        order_by='Test.name',
+        cascade='delete'
+    )
 
     @property
     def frontend(self):
@@ -270,14 +280,21 @@ class Test(BASE):
     cluster_id = sa.Column(sa.Integer(), nullable=False)
     test_set_id = sa.Column(sa.String(128))
 
-    test_run_id = sa.Column(sa.Integer(), sa.ForeignKey('test_runs.id'))
+    test_run_id = sa.Column(
+        sa.Integer(),
+        sa.ForeignKey(
+            'test_runs.id',
+            ondelete='CASCADE'
+        )
+    )
 
     #following code defines proper foreign key
     #contstraint for composite primary key
     __table_args__ = (
         sa.ForeignKeyConstraint(
             ['test_set_id', 'cluster_id'],
-            ['test_sets.id', 'test_sets.cluster_id']
+            ['test_sets.id', 'test_sets.cluster_id'],
+            ondelete='CASCADE'
         ),
         {}
     )

@@ -59,7 +59,19 @@ def discovery_check(cluster):
             if not set(testset.deployment_tags).issubset(
                 cluster_data['deployment_tags']
             ):
-                pass
+                #perform cascade deletion of testset
+                #and corresponding to it tests and
+                #testruns with their tests too
+                session.query(models.TestSet)\
+                    .filter_by(id=testset.id)\
+                    .filter_by(cluster_id=testset.cluster_id)\
+                    .delete()
+
+        #perform final discovery for tests
+        nose_discovery.discovery(
+            path=CORE_PATH,
+            deployment_info=cluster_data
+        )
 
 
 def _request_to_nailgun(api_url):

@@ -311,7 +311,7 @@ class TestTestRunsPutController(TestTestRunsController):
 
         self.nose_adapter_session_patcher = patch(
             'fuel_plugin.ostf_adapter.nose_plugin.nose_adapter.engine.get_session',
-            lambda *args: self.Session()
+            lambda *args: self.session
         )
         self.nose_adapter_session_patcher.start()
 

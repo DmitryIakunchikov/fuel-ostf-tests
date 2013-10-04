@@ -69,7 +69,7 @@ def get_description(test_obj):
         docstring = test_obj.test._testMethodDoc
 
         if docstring:
-            deployment_tags_pattern = r'Deployment tags:.?(?P<tags>.+)'
+            deployment_tags_pattern = r'Deployment tags:.?(?P<tags>.+)?'
             docstring, deployment_tags = _process_docstring(
                 docstring,
                 deployment_tags_pattern

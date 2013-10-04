@@ -78,8 +78,6 @@ class DiscoveryPlugin(plugins.Plugin):
                     if set(data['deployment_tags'])\
                        .issubset(self.deployment_info['deployment_tags']):
 
-                        LOG.info('%s added for %s', test_id, test_set_id)
-
                         data.update(
                             {
                                 'test_set_id': test_set_id,
@@ -87,9 +85,21 @@ class DiscoveryPlugin(plugins.Plugin):
                             }
                         )
 
-                        test_obj = models.Test(**data)
-                        test_obj = session.merge(test_obj)
-                        session.add(test_obj)
+                        #merge doesn't work here so we must check
+                        #tests existing with such test_set_id and cluster_id
+                        #so we won't ended up with dublicating data upon tests
+                        #in db.
+                        tests = session.query(models.Test)\
+                            .filter_by(cluster_id=self.test_sets[test_set_id].cluster_id)\
+                            .filter_by(test_set_id=test_set_id)\
+                            .filter_by(test_run_id=None)\
+                            .filter_by(name=data['name'])\
+                            .first()
+
+                        if not tests:
+                            LOG.info('%s added for %s', test_id, test_set_id)
+                            test_obj = models.Test(**data)
+                            session.add(test_obj)
 
 
 def discovery(path, deployment_info={}):

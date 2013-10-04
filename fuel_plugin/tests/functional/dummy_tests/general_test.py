@@ -33,7 +33,6 @@ class Dummy_test(unittest.TestCase):
         """fast pass test
         This is a simple always pass test
         Duration: 1sec
-        Deployment tags:
         """
         self.assertTrue(True)
 
@@ -42,26 +41,22 @@ class Dummy_test(unittest.TestCase):
         This is a simple test
         it will run for 5 sec
         Duration: 5sec
-        Deployment tags:
         """
         time.sleep(5)
         self.assertTrue(True)
 
     def test_fast_fail(self):
         """Fast fail
-        Deployment tags:
         """
         self.assertTrue(False, msg='Something goes wroooong')
 
     def test_fast_error(self):
         """And fast error
-        Deployment tags:
         """
         conn = httplib.HTTPSConnection('random.random/random')
         conn.request("GET", "/random.aspx")
 
     def test_fail_with_step(self):
         """Fast fail with step
-        Deployment tags:
         """
         self.fail('Step 3 Failed: Fake fail message')

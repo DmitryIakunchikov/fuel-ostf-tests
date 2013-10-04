@@ -34,7 +34,11 @@ class Response(object):
         else:
             self._parse_json(response.json())
             self.request = '{0} {1} \n with {2}'\
-                .format(response.request.method, response.request.url, response.request.body)
+                .format(
+                    response.request.method,
+                    response.request.url,
+                    response.request.body
+                )
 
     def __getattr__(self, item):
         if item in self.test_sets or item in self._tests:
@@ -60,9 +64,13 @@ class Response(object):
 
         self.test_sets = {}
         self._tests = {}
+
         for testset in json:
             self.test_sets[testset.pop('testset')] = testset
-            self._tests = dict((self._friendly_name(item.get('id')), item) for item in testset['tests'])
+            self._tests = dict(
+                (self._friendly_name(item.get('id')), item)
+                for item in testset['tests']
+            )
 
     def _friendly_name(self, name):
         return self.test_name_mapping.get(name, name)
