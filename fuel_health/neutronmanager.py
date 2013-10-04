@@ -67,6 +67,7 @@ class NeutronScenarioTest(nmanager.OfficialClientTest):
             cls.config.identity.admin_password,
             cls.config.identity.admin_tenant_name).tenant_id
         cls.network = []
+        cls.subnet = []
         cls.floating_ips = []
         cls.sec_group = []
         cls.error_msg = []
@@ -164,12 +165,13 @@ class NeutronScenarioTest(nmanager.OfficialClientTest):
 
         return secgroup
 
-    def _create_network(self, label='ost1_test-network-smoke-'):
+    def _create_network(self, tenant_id, label='ost1_test-network-smoke-'):
         n_label = rand_name(label)
-        cidr = self.config.network.tenant_network_cidr
-        network = {'name': label, 'admin_state_up': True}
-                   # 'cidr': cidr}
-        networks = self.network_client.create_network(network)
+        network = {"admin_state_up": True,
+                   "name": n_label,
+                   #'Shared' maybe also required.
+                   "tenant_id": tenant_id}
+        networks = self.network_client.create_network(network)['body']
         self.set_resource(n_label, networks)
         self.network.append(networks)
         self.verify_response_body_content(networks.label,
@@ -187,14 +189,31 @@ class NeutronScenarioTest(nmanager.OfficialClientTest):
             LOG.debug(exc)
             pass
 
-    def _list_networks(self):
-        nets = self.network_client.list_networks()
-        return nets
+    def _create_subnet(self, network):
+        tenant_id = network['tenant_id']
+        subnet = {"network_id": network['id'],
+                  "tenant_id": tenant_id,
+                  "ip_version": 4,
+                  "cidr": self.config.network.cidr}
 
-    def _create_server(self, client, name, security_groups):
+        subnet = self.network_client.create_subnet(subnet)
+        self.subnet.append(subnet)
+        return subnet
+
+    def _list_networks(self):
+        return self.network_client.list_networks()['networks']
+
+    def _list_subnets(self):
+        return self.network_client.list_subnets()['subnets']
+
+    def _list_routers(self):
+        return self.network_client.list_routers()['routers']
+
+    def _create_server(self, client, name, security_groups, network):
         base_image_id = nmanager.get_image_from_name()
         create_kwargs = {
             'security_groups': security_groups,
+            'nics': [{'net-id': network.id}]
         }
         self._create_nano_flavor()
         server = client.servers.create(name, base_image_id, 42,
@@ -211,18 +230,22 @@ class NeutronScenarioTest(nmanager.OfficialClientTest):
         self.set_resource(name, server)
         return server
 
-    def _create_floating_ip(self):
-        floating_ips_pool = self.network_client.list_floatingips()
+    def _create_floating_ip(self, server):
+        result = self.network_client.list_ports(device_id=server.id)
+        ports = result.get('ports', [])
+        self.verify_response_body_content(len(ports), 1,
+                                          ("Unable to determine "
+                                           "which port to target."))
+        network = self._get_router(
+            self.tenant_id)['routers']["external_gateway_info"]["network_id"]
 
-        if floating_ips_pool:
-            data = {'pool': floating_ips_pool[0].name}
-            floating_ip = self.network_client.create_floatingip(
-                body=data)
 
-            self.floating_ips.append(floating_ip)
-            return floating_ip
-        else:
-            self.fail('No available floating IP found')
+        data = {'floating_network_id': network.id}
+        floating_ip = self.network_client.create_floatingip(
+            body=data)['floating_ip']
+
+        self.floating_ips.append(floating_ip)
+        return floating_ip
 
     def _assign_floating_ip_to_instance(self, client, server, floating_ip):
         try:
@@ -327,6 +350,33 @@ class NeutronScenarioTest(nmanager.OfficialClientTest):
                     raise cls.failureException('REST API of '
                                                'OpenStack is inaccessible.'
                                                ' Please try again')
+
+    def _get_router(self, tenant_id):
+        """Retrieve a router for the given tenant id.
+
+        If a public router has been configured, it will be returned.
+
+        If a public router has not been configured, but a public
+        network has, a tenant router will be created and returned that
+        routes traffic to the public network.
+
+        """
+        router_id = self.config.network.public_router_id
+        network_id = self.config.network.public_network_id
+        if router_id:
+            result = self.network_client.show_router(router_id)
+            return result['body']
+        elif network_id:
+            router = self._create_router(tenant_id)
+            router.add_gateway(network_id)
+            return router
+        else:
+            raise Exception("Neither of 'public_router_id' or "
+                            "'public_network_id' has been defined.")
+
+    def _add_interface_to_router(self, router, subnet_id):
+        self.network_client.add_interface_router(router,
+                                                 {'subnet_id': subnet_id})
 
     @classmethod
     def tearDownClass(cls):

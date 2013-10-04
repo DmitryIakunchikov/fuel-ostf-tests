@@ -103,6 +103,38 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
             "Security group can not be created.",
             'security group creation')
 
+    @attr(type=['fuel', 'smoke'])
+    def test_003_create_networks(self):
+        """Network creation
+        Target components: Neutron
+
+        Scenario:
+            1. Create a network.
+            2. Get router for public networks.
+            3. Create subnet for created network.
+            4. Add subnet to the router.
+        Duration:
+        """
+        network = self.verify(25, self._create_network, 1,
+                              "Network can not be created.",
+                              "network creation",
+                              self.tenant_id)
+        router = self.verify(10, self._get_router, 2,
+                             "Router can not be identified.",
+                             "router identification",
+                             self.tenant_id)
+        subnet = self.verify(25, self._create_subnet, 3,
+                             "Subnet can not be created.",
+                             "subnet creation",
+                             network)
+        self.verify(20, self._add_interface_to_router, 4,
+                    "Subnet can not be added.",
+                    "subnet addition")
+
+        self.networks.append(network)
+        self.subnets.append(subnet)
+        self.routers.append(router)
+
 
     @attr(type=['fuel', 'smoke'])
     def test_004_check_networks(self):
@@ -115,6 +147,7 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
             3. Confirm that networks have expected ids.
         Duration: 50 s.
         """
+        # TODO: check subnets and routers
         #Checks that we see the newly created network/subnet/router via
         #checking the result of list_[networks,routers,subnets]
         seen_nets = self.verify(
@@ -125,15 +158,34 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
             'listing networks'
         )
         seen_labels, seen_ids = zip(*((n.label, n.id) for n in seen_nets))
-        for mynet in self.networks:
+        for net in self.networks:
             self.verify_response_body(seen_labels,
-                                      mynet.label,
+                                      net.label,
                                       ('Network is not created '
                                        'properly'))
             self.verify_response_body(seen_ids,
-                                      mynet.id,
+                                      net.id,
                                       ('Network does is created'
                                        ' properly '))
+
+        seen_subnets = self._list_subnets()
+        seen_subnet_ids = [n['id'] for n in seen_subnets]
+        for subnet in self.subnets:
+            self.verify_response_body(seen_subnet_ids,
+                                      subnet.id,
+                                      'Sub-net is not created properly')
+
+        seen_routers = self._list_routers()
+        seen_router_ids = [n['id'] for n in seen_routers]
+        seen_router_names = [n['name'] for n in seen_routers]
+        for router in self.routers:
+            self.verify_response_body(seen_router_names,
+                                      router.name,
+                                      'Router is not created properly')
+            self.verify_response_body(seen_router_ids,
+                                      router.id,
+                                      'Router is not created properly')
+
 
     @attr(type=['fuel', 'smoke'])
     def test_005_create_servers(self):
@@ -147,23 +199,21 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
         """
         if not self.security_groups:
             self.security_groups[self.tenant_id] = self.verify(
-                25,
-                self._create_security_group,
-                1,
+                25, self._create_security_group, 1,
                 "Security group can not be created.",
                 'security group creation')
 
         name = rand_name('ost1_test-server-smoke-')
         security_groups = [self.security_groups[self.tenant_id].name]
+        # TODO: check if it works correctly:
+        net = [net for net in self.networks
+               if net['tenant_id'] == self.tenant_id]
 
         server = self.verify(
-            200,
-            self._create_server,
-            2,
+            200, self._create_server, 2,
             "Creating instance using the new security group has failed.",
             'image creation',
-            self.compute_client, name, security_groups
-        )
+            self.compute_client, name, security_groups, net)
 
         self.servers.append(server)
 
@@ -187,14 +237,14 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
                     'security group creation')
             name = rand_name('ost1_test-server-smoke-')
             security_groups = [self.security_groups[self.tenant_id].name]
+            net = [net for net in self.networks
+                   if net['tenant_id'] == self.tenant_id]
 
             server = self.verify(
-                200,
-                self._create_server,
-                2,
+                200, self._create_server, 2,
                 "Server can not be created.",
                 "server creation",
-                self.compute_client, name, security_groups
+                self.compute_client, name, security_groups, net
             )
             self.servers.append(server)
 
@@ -203,7 +253,8 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
             self._create_floating_ip,
             3,
             "Floating IP can not be created.",
-            'floating IP creation')
+            'floating IP creation',
+            self.servers[0])
 
         if self.servers:
             self.verify(
@@ -269,7 +320,7 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
                         'VM connectivity checking', ip_address)
 
     @attr(type=['fuel', 'smoke'])
-    def test_008_check_public_instance_connectivity_from_instance(self):
+    def test_009_check_public_instance_connectivity_from_instance(self):
         """Check network connectivity from instance via floating IP
         Target component: Neutron
 
@@ -325,7 +376,7 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
                         'public connectivity checking from VM', ip_address)
 
     @attr(type=['fuel', 'smoke'])
-    def test_009_check_internet_connectivity_instance_without_floatingIP(self):
+    def test_010_check_internet_connectivity_instance_without_floatingIP(self):
         """Check network connectivity from instance without floating IP
         Target component: Neutron
 
@@ -368,12 +419,57 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
                     compute)
 
     @attr(type=['fuel', 'smoke'])
-    def test_010_check_instance_connectivity_by_tenant(self):
-        """Connectivity between instances in different tenants
+    def test_011_create_nets_subnets(self):
+        """
+        Networks and subnets creation
         Target component: Neutron
 
         Scenario:
             1. Create two tenants.
+            2. Create network with each tenant.
+            3. Create subnet for the created network.
+            4. Check networks were created successfully.
+            5. Check subnets were created successfully.
+        Duration: 200 s.
+        """
+        tenant1, tenant2 = [self.verify(10, self._create_tenant, 1,
+                                        "Tenant creation failed.",
+                                        "tenant creation")
+                            for _ in range(2)]
+
+        net1, net2 = [self.verify(30, self._create_network, 2,
+                                  "Network creation failed.",
+                                  "network creation",
+                                  tenant.id)
+                      for tenant in [tenant1, tenant2]]
+
+        subn1, subn2 = [self.verify(30, self._create_subnet, 3,
+                                    "Subnet creation failed.",
+                                    "subnet creation",
+                                    net) for net in [net1, net2]]
+        # TODO: check networks
+        seen_nets = self.verify(
+            50, self._list_networks, 4,
+            "List of networks is not available.",
+            'listing networks')
+
+        [self.verify_response_body(seen_nets, net,
+                                   "Networks were not created.")
+            for net in [net1, net2]]
+        seen_subnets = self.verify(
+            50, self._list_subnets, 5,
+            "List of subnets is not available.")
+        [self.verify_response_body(seen_subnets, subn,
+                                   "Subnets were not created")
+            for subn in [subn1, subn2]]
+
+    @attr(type=['fuel', 'smoke'])
+    def test_012_check_instance_connectivity_by_tenant(self):
+        """Connectivity between instances in different tenants
+        Target component: Neutron
+
+        Scenario:
+            1. Create two tenants (if they don`t exist yet).
             2. Create users using created tenants.
             3. Create security groups for both tenants.
             4. Authenticate with the first user.
@@ -384,14 +480,15 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
             9. Ping from Instance3 to Instance2.
         Duration: 300 s.
         """
-
-        tenant1, tenant2 = [self.verify(10, self._create_tenant, 1,
-                                        "Tenant creation failed",
-                                        "tenant creation")
-                            for _ in range(2)]
+        if not self.tenants:
+            # TODO: check if tenants already exist
+            tenant1, tenant2 = [self.verify(10, self._create_tenant, 1,
+                                            "Tenant creation failed.",
+                                            "tenant creation")
+                                for _ in range(2)]
 
         user1, user2 = ([self.verify(20, self._create_user, 2,
-                                     'User creation failed',
+                                     'User creation failed.',
                                      'user creation', self.identity_client,
                                      tenant.id)
                          for tenant in [tenant1, tenant2]])
@@ -413,7 +510,7 @@ class TestNeutronNetwork(neutronmanager.NeutronScenarioTest):
 
         self.verify_response_true(auth,
                                   'Step 3 failed: {msg}'.format(msg=msg_s))
-
+        # TODO: decide how to create servers in specific networks and do that:
         instance1 = self.verify(200, self._create_server, 4,
                                 "Instance creation failed",
                                 "instance creation",

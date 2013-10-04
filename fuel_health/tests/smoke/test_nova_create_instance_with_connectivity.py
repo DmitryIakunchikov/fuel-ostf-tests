@@ -59,6 +59,7 @@ class TestNovaNetwork(nmanager.NovaNetworkScenarioTest):
         cls.network = []
         cls.servers = []
         cls.floating_ips = []
+        cls.tenants = []
 
     def setUp(self):
         super(TestNovaNetwork, self).setUp()
