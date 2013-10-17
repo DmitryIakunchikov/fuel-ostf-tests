@@ -46,3 +46,16 @@ class CeilometerApiTests(ceilometeramnager.CeilometerBaseTest):
         list_alarms_resp = self.verify(20, self.list_alarm,
                                         1, fail_msg, "alarm listing")
 
+
+    def test_list_resources(self):
+        """Resource list availability
+        Test checks that the list of resources is available.
+        Target component: Ceilometer
+        Scenario:
+            1. Request the list of resources.
+        Duration: 5 s.
+        """
+        fail_msg = 'Resource list is unavailable. '
+
+        list_resources_resp = self.verify(5, self.list_resources,
+                                         1, fail_msg, "resource listing")

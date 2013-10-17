@@ -28,3 +28,8 @@ class CeilometerBaseTest(fuel_health.nmanager.OfficialClientTest):
         """
         return self.ceilometer_client.alarms.list()
 
+    def list_resources(self):
+        """
+            This method list resources
+        """
+        return self.ceilometer_client.resources.list()
