@@ -25,10 +25,24 @@ class CeilometerApiTests(ceilometeramnager.CeilometerBaseTest):
     TestClass contains tests that check basic Compute functionality.
     """
 
-    def test_list_resources(self):
+    def test_list_meters(self):
         """List resources
         Test checks that the list of images is available.
         Duration: 1s.
         """
-        self.list_meters()
+        fail_msg = "meter list unavailable"
+
+        list_meters_resp = self.verify(20, self.list_meters,
+                                        1, fail_msg, "meter listing")
+
+
+    def test_list_alarms(self):
+        """List alarms
+        Test checks that the list of images is available.
+        Duration: 1s.
+        """
+        fail_msg = "alarm list unavailable"
+
+        list_alarms_resp = self.verify(20, self.list_alarm,
+                                        1, fail_msg, "alarm listing")
 

@@ -18,8 +18,13 @@ class CeilometerBaseTest(fuel_health.nmanager.OfficialClientTest):
     def list_meters(self):
         """
             This method allows to get the list of environments.
-
             Returns the list of environments.
         """
-
         return self.ceilometer_client.meters.list()
+
+    def list_alarm(self):
+        """
+        This method list alarms
+        """
+        return self.ceilometer_client.alarms.list()
+
