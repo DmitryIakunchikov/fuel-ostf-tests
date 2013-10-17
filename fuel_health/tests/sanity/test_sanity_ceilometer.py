@@ -25,13 +25,6 @@ class CeilometerApiTests(ceilometeramnager.CeilometerBaseTest):
     TestClass contains tests that check basic Compute functionality.
     """
 
-    def test_setUp(self):
-        """SetUp
-        Test checks that service is available.
-        Duration: 1s.
-        """
-        self.setUp()
-
     def test_list_resources(self):
         """List resources
         Test checks that the list of images is available.

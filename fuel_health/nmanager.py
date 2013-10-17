@@ -72,7 +72,7 @@ class OfficialClientManager(fuel_health.manager.Manager):
         self.heat_client = self._get_heat_client()
         self.murano_client = self._get_murano_client()
         self.savanna_client = self._get_savanna_client()
-        self.ceilometer_client = self._get_ceilometer_client
+        self.ceilometer_client = self._get_ceilometer_client()
 
         self.client_attr_names = [
             'compute_client',
@@ -199,22 +199,16 @@ class OfficialClientManager(fuel_health.manager.Manager):
                                            auth_url=auth_url, token=token,
                                            username=username,
                                            password=password)
+
     def _get_ceilometer_client(self, username=None, password=None):
         keystone = self._get_identity_client()
-        token = keystone.auth_token
-        auth_url = self.config.identity.uri
 
-        endpoint = keystone.service_catalog.url_for(
-            service_type='ceilometer', endpoint_type='publicURL')
-        if not username:
-            username = self.config.identity.admin_username
-        if not password:
-            password = self.config.identity.admin_password
-
+        endpoint = keystone.service_catalog.url_for(service_type='metering',
+        endpoint_type='public')
+        print endpoint
         return ceilometerclient.v2.Client(endpoint,
-            auth_url=auth_url, token=token,
-            username=username,
-            password=password)
+            token = lambda : keystone.auth_token
+            )
 
 
     def _get_murano_client(self):
@@ -231,14 +225,14 @@ class OfficialClientManager(fuel_health.manager.Manager):
         # Get Murano API parameters
         self.api_host = None
         self.insecure = False
-#        if hasattr(self.config.murano, 'api_url'):
-#            self.api_host = self.config.murano.api_url
-#        if hasattr(self.config.murano, 'insecure'):
-#            self.insecure = self.config.murano.insecure
-#
-#        return muranoclient.v1.client.Client(endpoint=self.api_host,
-#                                             token=self.token_id,
-#                                             insecure=self.insecure)
+        if hasattr(self.config.murano, 'api_url'):
+            self.api_host = self.config.murano.api_url
+        if hasattr(self.config.murano, 'insecure'):
+            self.insecure = self.config.murano.insecure
+
+        return muranoclient.v1.client.Client(endpoint=self.api_host,
+                                             token=self.token_id,
+                                             insecure=self.insecure)
 
     def _get_savanna_client(self, username=None, password=None):
         auth_url = self.config.identity.uri

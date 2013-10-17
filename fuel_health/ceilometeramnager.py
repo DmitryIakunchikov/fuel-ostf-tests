@@ -22,4 +22,4 @@ class CeilometerBaseTest(fuel_health.nmanager.OfficialClientTest):
             Returns the list of environments.
         """
 
-        return self.ceilometer_client.list()
+        return self.ceilometer_client.meters.list()
